@@ -164,6 +164,11 @@ class FrameworkExtension extends Extension
             $definition->replaceArgument(1, null);
         }
 
+        $this->addAnnotatedClassesToCache(array(
+            'Bundle\\Controller\\',
+            'Bundle\\Entity\\',
+        ));
+
         $this->addClassesToCompile(array(
             'Symfony\\Component\\Config\\FileLocator',
 
@@ -840,8 +845,17 @@ class FrameworkExtension extends Extension
         $loader->load('annotations.xml');
 
         if ('none' !== $config['cache']) {
-            if ('file' === $config['cache']) {
+            $cacheService = $config['cache'];
+
+            if ('opcache' === $config['cache']) {
+                $cacheService = 'annotations.cache';
+
+                // Enable warmer only if OPcache used for cache
+                $definition = $container->findDefinition('annotations.cache_warmer');
+                $definition->addTag('kernel.cache_warmer');
+            } elseif ('file' === $config['cache']) {
                 $cacheDir = $container->getParameterBag()->resolveValue($config['file_cache_dir']);
+
                 if (!is_dir($cacheDir) && false === @mkdir($cacheDir, 0777, true) && !is_dir($cacheDir)) {
                     throw new \RuntimeException(sprintf('Could not create cache directory "%s".', $cacheDir));
                 }
@@ -850,11 +864,13 @@ class FrameworkExtension extends Extension
                     ->getDefinition('annotations.filesystem_cache')
                     ->replaceArgument(0, $cacheDir)
                 ;
+
+                $cacheService = 'annotations.filesystem_cache';
             }
 
             $container
                 ->getDefinition('annotations.cached_reader')
-                ->replaceArgument(1, new Reference('file' !== $config['cache'] ? $config['cache'] : 'annotations.filesystem_cache'))
+                ->replaceArgument(1, new Reference($cacheService))
                 ->replaceArgument(2, $config['debug'])
                 ->addAutowiringType(Reader::class)
             ;

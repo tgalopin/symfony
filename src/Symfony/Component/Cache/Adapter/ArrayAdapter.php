@@ -80,6 +80,14 @@ class ArrayAdapter implements AdapterInterface, LoggerAwareInterface
     }
 
     /**
+     * @return array
+     */
+    public function getValues()
+    {
+        return $this->values;
+    }
+
+    /**
      * {@inheritdoc}
      */
     public function hasItem($key)

@@ -64,7 +64,7 @@ class OpCacheAdapterTest extends CachePoolTest
     {
         $arrayWithRefs = array();
         $arrayWithRefs[0] = 123;
-        $arrayWithRefs[1] =& $arrayWithRefs[0];
+        $arrayWithRefs[1] = &$arrayWithRefs[0];
 
         $object = (object) array(
             'foo' => 'bar',
@@ -100,7 +100,7 @@ class OpCacheAdapterTest extends CachePoolTest
         $adapter = $this->createCachePool();
         $adapter->store($expected);
 
-        $actual = require self::$file;
+        $actual = eval(substr(file_get_contents(self::$file), 6));
 
         $this->assertSame($expected, $actual, 'Warm up should create a PHP file that OPCache can load in memory');
     }
@@ -113,7 +113,7 @@ class OpCacheAdapterWrapper extends OpCacheAdapter
         call_user_func(\Closure::bind(function () use ($item) {
             $this->values[$item->getKey()] = $item->get();
             $this->store($this->values);
-            $this->initialize();
+            $this->values = eval(substr(file_get_contents($this->file), 6));
         }, $this, OpCacheAdapter::class));
 
         return true;

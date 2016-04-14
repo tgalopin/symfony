@@ -31,6 +31,7 @@ class OpCacheAdapter implements AdapterInterface, LoggerAwareInterface
     use LoggerAwareTrait;
 
     private $file;
+    private $umask;
     private $values;
     private $createCacheItem;
 
@@ -57,11 +58,20 @@ class OpCacheAdapter implements AdapterInterface, LoggerAwareInterface
     }
 
     /**
-     * @param string $file The PHP file were values are cached.
+     * @param string           $file         The PHP file were values are cached.
+     * @param AdapterInterface $fallbackPool A pool to fallback on when an item is not hit.
+     * @param int              $umask
+     *
+     * @throws \InvalidArgumentException When the umask is invalid.
      */
-    public function __construct($file, AdapterInterface $fallbackPool)
+    public function __construct($file, AdapterInterface $fallbackPool, $umask = 0002)
     {
+        if (!is_int($umask)) {
+            throw new \InvalidArgumentException(sprintf('The parameter umask must be an integer, was: %s', gettype($umask)));
+        }
+
         $this->file = $file;
+        $this->umask = $umask;
         $this->fallbackPool = $fallbackPool;
         $this->createCacheItem = \Closure::bind(
             function ($key, $value, $isHit) {
@@ -95,12 +105,8 @@ class OpCacheAdapter implements AdapterInterface, LoggerAwareInterface
         } else {
             $directory = dirname($this->file);
 
-            if (!file_exists($directory)) {
-                @mkdir($directory, 0777, true);
-
-                if (!file_exists($directory)) {
-                    throw new InvalidArgumentException(sprintf('Cache directory does not exist and cannot be created: %s', $directory));
-                }
+            if (!is_dir($directory) && !@mkdir($directory, 0777 & (~$this->umask), true)) {
+                throw new InvalidArgumentException(sprintf('Cache directory does not exist and cannot be created: %s', $directory));
             }
 
             if (!is_writable($directory)) {
@@ -156,6 +162,7 @@ EOF;
         $tmpFile = uniqid($this->file);
 
         file_put_contents($tmpFile, $dump);
+        @chmod($tmpFile, 0666 & (~$this->umask));
         unset($serialized, $unserialized, $value, $dump);
 
         if ('\\' === DIRECTORY_SEPARATOR) {
