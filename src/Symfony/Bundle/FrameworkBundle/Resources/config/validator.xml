@@ -42,6 +42,11 @@
             </argument>
         </service>
 
+        <service id="validator.cache_warmer" class="Symfony\Bundle\FrameworkBundle\CacheWarmer\ValidatorCacheWarmer" public="false">
+            <argument>%kernel.cache_dir%/validator_metadata.php</argument>
+            <argument type="service" id="cache.validator" />
+        </service>
+
         <service id="validator.validator_factory" class="Symfony\Bundle\FrameworkBundle\Validator\ConstraintValidatorFactory" public="false">
             <argument type="service" id="service_container" />
             <argument type="collection" />

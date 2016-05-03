@@ -764,17 +764,32 @@ class FrameworkExtension extends Extension
 
         $loader->load('validator.xml');
 
+        $cacheEnabled = 'validator.mapping.cache.symfony' === $config['cache'] && !$container->getParameter('kernel.debug');
+
         $validatorBuilder = $container->getDefinition('validator.builder');
+        $validatorCacheWarmer = $container->getDefinition('validator.cache_warmer');
+
+        if ($cacheEnabled) {
+            $validatorCacheWarmer->addTag('kernel.cache_warmer');
+        }
 
         $container->setParameter('validator.translation_domain', $config['translation_domain']);
 
         list($xmlMappings, $yamlMappings) = $this->getValidatorMappingFiles($container);
         if (count($xmlMappings) > 0) {
             $validatorBuilder->addMethodCall('addXmlMappings', array($xmlMappings));
+
+            if ($cacheEnabled) {
+                $validatorCacheWarmer->addMethodCall('addXmlMappings', array($xmlMappings));
+            }
         }
 
         if (count($yamlMappings) > 0) {
             $validatorBuilder->addMethodCall('addYamlMappings', array($yamlMappings));
+
+            if ($cacheEnabled) {
+                $validatorCacheWarmer->addMethodCall('addYamlMappings', array($yamlMappings));
+            }
         }
 
         $definition = $container->findDefinition('validator.email');
@@ -787,6 +802,10 @@ class FrameworkExtension extends Extension
         if (array_key_exists('static_method', $config) && $config['static_method']) {
             foreach ($config['static_method'] as $methodName) {
                 $validatorBuilder->addMethodCall('addMethodMapping', array($methodName));
+
+                if ($cacheEnabled) {
+                    $validatorCacheWarmer->addMethodCall('addMethodMapping', array($methodName));
+                }
             }
         }
 
