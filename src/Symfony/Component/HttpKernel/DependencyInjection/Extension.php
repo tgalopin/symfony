@@ -34,16 +34,6 @@ abstract class Extension extends BaseExtension
     }
 
     /**
-     * Adds classes to the class cache.
-     *
-     * @param array $classes An array of classes
-     */
-    public function addClassesToCompile(array $classes)
-    {
-        $this->classes = array_merge($this->classes, $classes);
-    }
-
-    /**
      * Gets the annotated classes to cache.
      *
      * @return array An array of classes
@@ -54,12 +44,14 @@ abstract class Extension extends BaseExtension
     }
 
     /**
-     * Adds annotated classes to the annotation cache.
+     * Adds classes to the class cache.
      *
-     * @param array $annotatedClasses An array of classes
+     * @param array $classes          An array of class patterns
+     * @param array $annotatedClasses An array of class patterns
      */
-    public function addAnnotatedClassesToCompile(array $annotatedClasses)
+    public function addClassesToCompile(array $classes, array $annotatedClasses = array())
     {
+        $this->classes = array_merge($this->classes, $classes);
         $this->annotatedClasses = array_merge($this->annotatedClasses, $annotatedClasses);
     }
 }
