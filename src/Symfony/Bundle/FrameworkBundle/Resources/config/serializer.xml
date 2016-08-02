@@ -6,6 +6,7 @@
 
     <parameters>
         <parameter key="serializer.mapping.cache.prefix" />
+        <parameter key="serializer.mapping.cache.file">%kernel.cache_dir%/serialization.php</parameter>
     </parameters>
 
     <services>
@@ -33,12 +34,32 @@
         </service>
 
         <!-- Class Metadata Factory -->
-        <service id="serializer.mapping.class_metadata_factory" class="Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory" public="false">
+        <service id="serializer.mapping.raw_class_metadata_factory" class="Symfony\Component\Serializer\Mapping\Factory\ClassMetadataFactory" public="false">
             <argument type="service" id="serializer.mapping.chain_loader" />
             <argument>null</argument>
         </service>
 
+        <service id="serializer.mapping.cache_class_metadata_factory" class="Symfony\Component\Serializer\Mapping\Factory\CacheClassMetadataFactory" public="false">
+            <argument type="service" id="serializer.mapping.raw_class_metadata_factory" />
+            <argument /><!-- Cache pool populated by the extension -->
+        </service>
+
+        <service id="serializer.mapping.class_metadata_factory" alias="serializer.mapping.raw_class_metadata_factory" />
+
         <!-- Cache -->
+        <service id="serializer.mapping.cache_warmer" class="Symfony\Bundle\FrameworkBundle\CacheWarmer\SerializerCacheWarmer" public="false">
+            <argument type="service" id="serializer.mapping.chain_loader" />
+            <argument>%serializer.mapping.cache.file%</argument>
+            <argument type="service" id="cache.serializer" />
+            <tag name="kernel.cache_warmer" />
+        </service>
+
+        <service id="serializer.mapping.cache.symfony" class="Symfony\Component\Cache\Adapter\PhpArrayAdapter">
+            <factory class="Symfony\Component\Cache\Adapter\PhpArrayAdapter" method="create" />
+            <argument>%serializer.mapping.cache.file%</argument>
+            <argument type="service" id="cache.serializer" />
+        </service>
+
         <service id="serializer.mapping.cache.doctrine.apc" class="Doctrine\Common\Cache\ApcCache" public="false">
             <call method="setNamespace">
                 <argument>%serializer.mapping.cache.prefix%</argument>
