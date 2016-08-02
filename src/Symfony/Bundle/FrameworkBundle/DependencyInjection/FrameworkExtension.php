@@ -13,6 +13,7 @@ namespace Symfony\Bundle\FrameworkBundle\DependencyInjection;
 
 use Doctrine\Common\Annotations\Reader;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
+use Symfony\Component\Cache\DoctrineProvider;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
@@ -30,6 +31,7 @@ use Symfony\Component\Serializer\Mapping\Factory\CacheClassMetadataFactory;
 use Symfony\Component\Serializer\Normalizer\DataUriNormalizer;
 use Symfony\Component\Serializer\Normalizer\DateTimeNormalizer;
 use Symfony\Component\Serializer\Normalizer\JsonSerializableNormalizer;
+use Symfony\Component\VarDumper\VarDumper;
 use Symfony\Component\Workflow;
 
 /**
@@ -1068,29 +1070,26 @@ class FrameworkExtension extends Extension
 
         $chainLoader->replaceArgument(0, $serializerLoaders);
 
+        $cache = null;
+
         if (isset($config['cache']) && $config['cache']) {
             @trigger_error('The "framework.serializer.cache" option is deprecated since Symfony 3.1 and will be removed in 4.0. Configure the "cache.serializer" service under "framework.cache.pools" instead.', E_USER_DEPRECATED);
 
+            $cache = new Definition(DoctrineProvider::class);
+            $cache->setDecoratedService($config['cache']);
+            $cache->setPublic(false);
+        } elseif (!$container->getParameter('kernel.debug')) {
+            $cache = new Reference('serializer.mapping.cache.symfony');
+        }
+
+        if ($cache) {
             $container->setParameter(
                 'serializer.mapping.cache.prefix',
                 'serializer_'.$this->getKernelRootHash($container)
             );
 
-            $container->getDefinition('serializer.mapping.class_metadata_factory')->replaceArgument(
-                1, new Reference($config['cache'])
-            );
-        } elseif (!$container->getParameter('kernel.debug')) {
-            $cacheMetadataFactory = new Definition(
-                CacheClassMetadataFactory::class,
-                array(
-                    new Reference('serializer.mapping.cache_class_metadata_factory.inner'),
-                    new Reference('cache.serializer'),
-                )
-            );
-            $cacheMetadataFactory->setPublic(false);
-            $cacheMetadataFactory->setDecoratedService('serializer.mapping.class_metadata_factory');
-
-            $container->setDefinition('serializer.mapping.cache_class_metadata_factory', $cacheMetadataFactory);
+            $container->getDefinition('serializer.mapping.cache_class_metadata_factory')->replaceArgument(1, $cache);
+            $container->setAlias('serializer.mapping.class_metadata_factory', 'serializer.mapping.cache_class_metadata_factory');
         }
 
         if (isset($config['name_converter']) && $config['name_converter']) {

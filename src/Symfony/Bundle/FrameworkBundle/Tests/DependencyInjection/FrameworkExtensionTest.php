@@ -21,6 +21,7 @@ use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\ProxyAdapter;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\DefinitionDecorator;
 use Symfony\Component\DependencyInjection\Loader\ClosureLoader;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
@@ -467,7 +468,7 @@ abstract class FrameworkExtensionTest extends TestCase
 
         $this->assertCount(1, $argument);
         $this->assertEquals('Symfony\Component\Serializer\Mapping\Loader\AnnotationLoader', $argument[0]->getClass());
-        $this->assertNull($container->getDefinition('serializer.mapping.class_metadata_factory')->getArgument(1));
+        $this->assertNull($container->getDefinition('serializer.mapping.raw_class_metadata_factory')->getArgument(1));
         $this->assertEquals(new Reference('serializer.name_converter.camel_case_to_snake_case'), $container->getDefinition('serializer.normalizer.object')->getArgument(1));
         $this->assertEquals(new Reference('property_info', ContainerBuilder::IGNORE_ON_INVALID_REFERENCE), $container->getDefinition('serializer.normalizer.object')->getArgument(3));
     }
@@ -543,13 +544,23 @@ abstract class FrameworkExtensionTest extends TestCase
     public function testSerializerCacheActivated()
     {
         $container = $this->createContainerFromFile('serializer_enabled');
+
         $this->assertTrue($container->hasDefinition('serializer.mapping.cache_class_metadata_factory'));
+        $this->assertSame(
+            'serializer.mapping.cache_class_metadata_factory',
+            (string) $container->getAlias('serializer.mapping.class_metadata_factory')
+        );
     }
 
     public function testSerializerCacheDisabled()
     {
         $container = $this->createContainerFromFile('serializer_enabled', array('kernel.debug' => true, 'kernel.container_class' => __CLASS__));
-        $this->assertFalse($container->hasDefinition('serializer.mapping.cache_class_metadata_factory'));
+
+        $this->assertTrue($container->hasDefinition('serializer.mapping.cache_class_metadata_factory'));
+        $this->assertSame(
+            'serializer.mapping.raw_class_metadata_factory',
+            (string) $container->getAlias('serializer.mapping.class_metadata_factory')
+        );
     }
 
     /**
@@ -561,8 +572,16 @@ abstract class FrameworkExtensionTest extends TestCase
         ErrorAssert::assertDeprecationsAreTriggered('The "framework.serializer.cache" option is deprecated', function () {
             $container = $this->createContainerFromFile('serializer_legacy_cache', array('kernel.debug' => true, 'kernel.container_class' => __CLASS__));
 
-            $this->assertFalse($container->hasDefinition('serializer.mapping.cache_class_metadata_factory'));
-            $this->assertEquals(new Reference('foo'), $container->getDefinition('serializer.mapping.class_metadata_factory')->getArgument(1));
+            $this->assertTrue($container->hasDefinition('serializer.mapping.cache_class_metadata_factory'));
+            $this->assertSame(
+                'serializer.mapping.cache_class_metadata_factory',
+                (string) $container->getAlias('serializer.mapping.class_metadata_factory')
+            );
+
+            $cachedDefinition = $container->getDefinition('serializer.mapping.cache_class_metadata_factory');
+
+            $this->assertInstanceOf(Definition::class, $cachedDefinition->getArgument(1));
+            $this->assertSame('foo', $cachedDefinition->getArgument(1)->getDecoratedService()[0]);
         });
     }
 

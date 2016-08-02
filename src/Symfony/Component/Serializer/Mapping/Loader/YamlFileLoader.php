@@ -38,26 +38,7 @@ class YamlFileLoader extends FileLoader
     public function loadClassMetadata(ClassMetadataInterface $classMetadata)
     {
         if (null === $this->classes) {
-            if (!stream_is_local($this->file)) {
-                throw new MappingException(sprintf('This is not a local file "%s".', $this->file));
-            }
-
-            if (null === $this->yamlParser) {
-                $this->yamlParser = new Parser();
-            }
-
-            $classes = $this->yamlParser->parse(file_get_contents($this->file));
-
-            if (empty($classes)) {
-                return false;
-            }
-
-            // not an array
-            if (!is_array($classes)) {
-                throw new MappingException(sprintf('The file "%s" must contain a YAML array.', $this->file));
-            }
-
-            $this->classes = $classes;
+            $this->classes = $this->loadClassesFromYaml();
         }
 
         if (isset($this->classes[$classMetadata->getName()])) {
@@ -102,5 +83,39 @@ class YamlFileLoader extends FileLoader
         }
 
         return false;
+    }
+
+    /**
+     * Return the names of the classes mapped in this file.
+     *
+     * @return string[] The classes names
+     */
+    public function getMappedClasses()
+    {
+        return array_keys($this->loadClassesFromYaml());
+    }
+
+    private function loadClassesFromYaml()
+    {
+        if (!stream_is_local($this->file)) {
+            throw new MappingException(sprintf('This is not a local file "%s".', $this->file));
+        }
+
+        if (null === $this->yamlParser) {
+            $this->yamlParser = new Parser();
+        }
+
+        $classes = $this->yamlParser->parse(file_get_contents($this->file));
+
+        if (empty($classes)) {
+            return false;
+        }
+
+        // not an array
+        if (!is_array($classes)) {
+            throw new MappingException(sprintf('The file "%s" must contain a YAML array.', $this->file));
+        }
+
+        return $classes;
     }
 }

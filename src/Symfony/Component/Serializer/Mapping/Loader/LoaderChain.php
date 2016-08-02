@@ -63,4 +63,12 @@ class LoaderChain implements LoaderInterface
 
         return $success;
     }
+
+    /**
+     * @return LoaderInterface[]
+     */
+    public function getDelegatedLoaders()
+    {
+        return $this->loaders;
+    }
 }
