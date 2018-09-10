@@ -119,7 +119,7 @@ class MockArraySessionStorage implements SessionStorageInterface
      */
     public function setId($id)
     {
-        if ($this->started) {
+        if ($this->started && $this->id !== $id) {
             throw new \LogicException('Cannot set session ID after the session has started.');
         }
 
